@@ -25,8 +25,6 @@ def lambda_handler(event, context):
     logger.info('Event => {}'.format(json.dumps(event_data, indent=4)))
 
     log_event = event_data['logEvents'][0]
-    #utc_time = datetime.utcfromtimestamp(log_event['timestamp']/1000).replace(tzinfo=timezone.utc)
-    #log_time = utc_time.astimezone(pytz.timezone('Asia/Seoul')).strftime('%Y-%m-%d %H:%M:%S %Z%z')
     payload = {
         'channel': SLACK_CHANNEL,
         'message': make_slack_message(log_event['message'],
