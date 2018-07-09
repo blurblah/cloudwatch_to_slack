@@ -27,9 +27,12 @@ def lambda_handler(event, context):
     log_event = event_data['logEvents'][0]
     payload = {
         'channel': SLACK_CHANNEL,
-        'message': make_slack_message(log_event['message'],
-                                      event_data['logStream'],
-                                      log_event['timestamp']//1000)
+        'message': '',
+        'attachments': [
+            make_slack_attachment(log_event['message'],
+                                  event_data['logStream'],
+                                  log_event['timestamp']//1000)
+        ]
     }
     req = Request(NOTIBOY_ENDPOINT, data=json.dumps(payload).encode('utf-8'),
                   headers={'Content-Type': 'application/json'})
@@ -43,15 +46,28 @@ def lambda_handler(event, context):
         logger.error("Server connection failed: %s", e.reason)
 
 
-def make_slack_message(log_message, log_stream, timestamp):
+def make_slack_attachment(log_message, log_stream, timestamp):
     logger.info('Log stream => {}'.format(log_stream))
     logger.info('Log message => {}'.format(log_message))
-
-    escaped_message = log_message.replace('&', '&amp;')\
+    escaped_message = log_message.replace('&', '&amp;') \
         .replace('<', '&lt;').replace('>', '&gt;')
     utc_time = datetime.utcfromtimestamp(timestamp).replace(tzinfo=timezone.utc)
     logger.info('Log time => {}'.format(utc_time))
-    formatted_time = '<!date^{}^Reported {{date_num}} {{time_secs}}|Reported {}>'\
+    formatted_time = '<!date^{}^Reported {{date_num}} {{time_secs}}|Reported {}>' \
         .format(timestamp, utc_time.strftime('%Y-%m-%d %I:%M:%S %p'))
-    return '{}\nLog stream: {}\nLogs: {}'\
-        .format(formatted_time, log_stream, escaped_message)
+    return {
+        'fallback': 'Reported {}'.format(utc_time.strftime('%Y-%m-%d %I:%M:%S %p')),
+        'color': 'danger',
+        'title': formatted_time,
+        'text': escaped_message,
+        'fields': [
+            {
+                'title': 'Stream',
+                'value': log_stream,
+                'short': False
+            }
+        ],
+        'footer': 'Notiboy API',
+        'footer_icon': 'https://platform.slack-edge.com/img/default_application_icon.png',
+        'ts': timestamp
+    }
